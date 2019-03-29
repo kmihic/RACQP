@@ -9,13 +9,32 @@
 %
 %
 
-function rac_out = rac_single_block(model, run_p)
+
+
+function rac_out = rac_single_block(model, run_p, time_start)
 % RAC_SINGLE_BLOCK Solves QP using RAC single x block approach 
   
   %start the clock
-  stime_start = tic;   
-  time_start = tic;
+  stime_start = time_start;   
 
+  % Remove inequalities
+  if(length(model.bineq > 0) && run_p.single_block_embed_slacks)
+    n_var_x = model.size;
+    m1 = size(model.Aeq,1);
+    m2 = size(model.Aineq,1);  
+    model.Q = [model.Q, sparse(n_var_x,m2); sparse(m2,n_var_x+m2)];
+    model.c = [model.c; sparse(m2,1)];
+    model.Aeq = [model.Aeq, sparse(m1,m2); model.Aineq, speye(m2,m2)];
+    model.Aineq = sparse(0,n_var_x+m2);
+    model.beq = [model.beq;model.bineq];
+    model.bineq = [];
+    model.x0(n_var_x+m2) = 0;
+    model.lb(n_var_x+m2) = 0;
+    model.ub(n_var_x+1:n_var_x+m2) = inf;
+    model.size = n_var_x+m2;
+  end
+
+  
   n_var_x = model.size;
   m1 = size(model.Aeq,1);
   m2 = size(model.Aineq,1);  
@@ -25,6 +44,8 @@ function rac_out = rac_single_block(model, run_p)
   beta_i = 1/beta;
   beta_s = sqrt(beta);
   beta_si = 1/beta_s;
+
+  
 
 
   %Check what numerical approach we are using
@@ -57,18 +78,39 @@ function rac_out = rac_single_block(model, run_p)
     Q = model.Q;
   else
     do_xk = 1;
-    z_current = sparse(n_var_x,1);  
+    z_current = zeros(n_var_x,1);  
     xk = model.x0;    
-    Q = model.Q+beta_h*speye(n_var_x);
+    if(use_kkt) % testing 1/2xQx model
+      Q = model.Q+beta_h*speye(n_var_x);
+    else
+      Q = model.Q+beta_h*speye(n_var_x);
+    end
   end
 
   %Define auxiliary vectors and matrice
-  A = [model.Aeq; model.Aineq];
+  if(~run_p.use_sparse)
+    Q=full(Q);
+    Aeq = full(model.Aeq);
+    Aineq = full(model.Aineq);
+    mc = full(model.c);
+    mQ = full(model.Q);
+    sp_m1 = zeros(m1,1);
+  else
+    Aeq = model.Aeq;
+    Aineq = model.Aineq;
+    mc = model.c;
+    mQ = model.Q;
+    sp_m1 = sparse(m1,1);
+  end
+  A = [Aeq; Aineq];
   b = [model.beq;model.bineq];
+
+  
   x_current = model.x0;
   y_current = zeros(m,1);
-  s_current = max(model.bineq-model.Aineq*model.x0,0);
-  Ares = [model.Aeq;model.Aineq];
+  s_current = max(model.bineq-Aineq*model.x0,0);
+  Ares = [Aeq;Aineq];
+  
 
   %initialize counters and vars
   curr_iter = 0;
@@ -78,10 +120,10 @@ function rac_out = rac_single_block(model, run_p)
   curr_res = Inf;
 
   %prepare data arrays 
-  if(size(A,1) == 0)
-    c_stat = model.c;
+  if(size(A,1) == 0 || use_kkt)
+    c_stat = mc;
   else
-    c_stat =  model.c-beta*A'*b;
+    c_stat =  mc-beta*A'*b;
   end
 
   if(use_gurobi) %gurobi used to handle bounds
@@ -91,14 +133,18 @@ function rac_out = rac_single_block(model, run_p)
   elseif(use_kkt) %equality constrained problems only
     Qinv = inv(Q);
     Qinv_m = -Qinv;
-    AQinv = model.Aeq * Qinv;
+    AQinv = Aeq * Qinv;
     AQinv_m = -AQinv;
     AQinv_mt = AQinv_m';
-    Q_fact = AQinv*model.Aeq';
+    Q_fact = AQinv*Aeq';
+    
     R = chol(Q_fact);
-  else %default ldl factorization    
+
+  else %default ldl factorization,     
     sbA=beta_s*A;
-    [L,D,P] = ldl([2*Q, sbA';sbA, -speye(m)]);
+   % using speye, for some reasons it wors better than is using 
+   % eye(m) regardless of Q,A sparsity
+     [L,D,P] = ldl([2*Q, sbA';sbA, -speye(m)]);
   end
 
   init_time = toc(stime_start);
@@ -119,7 +165,7 @@ function rac_out = rac_single_block(model, run_p)
     end
     %add slacks if used (will be skipped if kkt, as no ineq)
     if(length(model.bineq) > 0) 
-      c_current = c_current + beta*model.Aineq'*s_current;
+      c_current = c_current + beta*Aineq'*s_current;
     end     
     sub_model_time = toc(stime_start) + sub_model_time;
     
@@ -130,8 +176,8 @@ function rac_out = rac_single_block(model, run_p)
       result_x = solve_subproblem_gurobi(Q_current, c_current, model.lb, model.ub, run_p);
     elseif(use_kkt)
       q = AQinv_m * c_current -2*model.beq;   
-      y_current = R\(R'\q);
-      result_x = (Qinv_m*c_current + AQinv_mt*y_current)/2;
+      y_kkt = R\(R'\q);
+      result_x = (Qinv_m*c_current + AQinv_mt*y_kkt)/2; 
     else %default ldl factorization        
       q = [-c_current;zeros(m,1)];
       result_x = P*(L'\(D\(L\(P'*(q)))));
@@ -150,7 +196,7 @@ function rac_out = rac_single_block(model, run_p)
       %update s if needed
       if(length(model.bineq) > 0)
         s_current = max(0,beta_i*y_current(m1+1:m)+model.bineq-Ax(m1+1:m));
-        res_y = (Ax + [sparse(m1,1);s_current] - b);
+        res_y = (Ax + [sp_m1;s_current] - b);
       elseif(length(model.beq) > 0)
         res_y = (Ax - b);
       else 
@@ -168,7 +214,7 @@ function rac_out = rac_single_block(model, run_p)
     if(do_xk)
       xk = min(max(model.lb,x_current-beta_i*z_current),model.ub);
       res_z = (x_current-xk);
-      z_current = z_current - res_z;
+      z_current = z_current - beta*res_z;
       curr_res = max(curr_res, max(abs(res_z)));
     end
      
@@ -177,7 +223,7 @@ function rac_out = rac_single_block(model, run_p)
 
     if(isfield(run_p,'debug') && run_p.debug > 0)
       x = x_current(1:n_var_x);
-      obj_val = x'*model.Q*x+model.c'*x+model.const;   
+      obj_val = x'*mQ*x+mc'*x+model.const;   
       s=sprintf("single_block (%d): %e %e (residual prim, residual obj val)",...
             curr_iter, curr_res,obj_val);
       disp(s)
@@ -190,18 +236,19 @@ function rac_out = rac_single_block(model, run_p)
 
   %prepare the output struct  
   x = x_current(1:n_var_x);
-  obj_val = x'*model.Q*x+model.c'*x+model.const;
-  %Can not do dual residual if Gurobi or kkt used -- missing dual vars
-  if(use_gurobi || use_kkt)
-    curr_res_d = -inf;
-  else
-    curr_res_d = 2*model.Q*x + model.c - Ares'*y_current;
+  obj_val = x'*mQ*x+mc'*x+model.const;
+  %dual residual
+  %bounds
+  curr_res_d = inf;  
+  %if kkt, no ineq, and eq are local, thus no dual vars avaiable
+  if(~use_kkt)
     if(do_xk)
-      curr_res_d = curr_res_d - z_current;
+      curr_res_d = - z_current;
     end
+    curr_res_d = curr_res_d + 2*mQ*x + mc - Ares'*y_current;
     curr_res_d = max(abs(curr_res_d));
-  end
-
+  end  
+  
   rac_out.sol_x = x;
   rac_out.sol_obj_val = obj_val;  
   rac_out.sol_residue_p = curr_res;
@@ -221,7 +268,11 @@ end %function solve
 
 function x = solve_subproblem_gurobi(Q_current, c_current, lb,ub, run_p)
 
-  model.Q = Q_current;
+  if(issparse(Q_current))
+    model.Q = Q_current;
+  else
+    model.Q = sparse(Q_current);
+  end
   model.obj = full(c_current);
   % no local constraints
   model.A= sparse(0,length(c_current));

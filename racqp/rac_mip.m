@@ -9,10 +9,13 @@
 %
 %
 
-function rac_out = rac_mip(model, run_mip, gurobi_params)
+function rac_out = rac_mip(model, run_mip, time_start)
 
 
   run_sub = run_mip.run_sub; % subproblem run params
+  run_sub.max_rtime = run_mip.max_rtime;
+  run_sub.n_perturb_trial = run_mip.n_perturb_trial;
+
   %if not external,make sure we use gurobi
   if(strcmpi('cholesky',run_sub.sub_solver_type))
     run_sub.sub_solver_type = 'gurobi'; %make sure we use Gurobi
@@ -33,6 +36,9 @@ function rac_out = rac_mip(model, run_mip, gurobi_params)
   x0_curr = model.x0;
   cnt = 0;
   cnt_perturb = 0;
+  obj_iter = [];
+  res_iter = [];
+  time_iter = [];
 
   %main loop
   while(~terminate(run_mip, curr_iter, cnt_perturb, time_start))
@@ -40,7 +46,7 @@ function rac_out = rac_mip(model, run_mip, gurobi_params)
     %set the initial point
     model.x0 = x0_curr;
     %call the solver
-    rac_current = rac_multi_block(model,run_sub);
+    rac_current = rac_multi_block(model,run_sub,time_start);
 
     obj_curr = rac_current.sol_obj_val;
     res_curr = rac_current.sol_residue_p;
@@ -51,30 +57,32 @@ function rac_out = rac_mip(model, run_mip, gurobi_params)
       res_best = res_curr;
       obj_best = obj_curr;
       x_best = rac_current.sol_x;
-      cnt = 0;
     %same tolerance, get if objective better
     elseif(res_curr == res_best && obj_curr < obj_best)
       obj_best = obj_curr;
       x_best = rac_current.sol_x;
-      cnt = 0;
-    else
-      cnt = cnt + 1;
     end
 
     %time to perturb
-    if(cnt == run_mip.n_perturb_trial)
-      x0_curr = perturb(x_best, model, run_mip, res_curr);
-      cnt = 0;
-      cnt_perturb = cnt_perturb + 1;
-    end  
+    x0_curr = perturb(x_best, model, run_mip, res_curr);
+    cnt_perturb = cnt_perturb + 1;
+    
 
-    curr_iter = curr_iter +1;
+    curr_iter = curr_iter +rac_current.n_iter;
     if(isfield(run_mip,'debug') && run_mip.debug > 0)      
       s=sprintf("MIP (%d): %.3e %.3e : %.3e %.3e %.3f (curr residual, obj val: best res,obj, time)",...
                curr_iter,res_curr,obj_curr,res_best,obj_best,toc(time_start));
       disp(s)  
-      %store for output  
-      obj_iter(curr_iter) = obj_curr;
+      %store for output 
+      if(isfield(rac_current,'obj_iter'))
+        obj_iter = [obj_iter,rac_current.obj_iter] ;
+      end
+      if(isfield(rac_current,'res_iter'))
+        res_iter = [res_iter,rac_current.res_iter] ;
+      end
+      if(isfield(rac_current,'time_iter'))
+        time_iter = [time_iter,rac_current.time_iter] ;
+      end
     end
 
   end %main loop
@@ -88,6 +96,8 @@ function rac_out = rac_mip(model, run_mip, gurobi_params)
   rac_out.rac_time = rac_time;  
   if(isfield(run_mip,'debug') && run_mip.debug > 0)
     rac_out.obj_iter = obj_iter;
+    rac_out.res_iter = res_iter;
+    rac_out.time_iter = time_iter;
   end
 
 end

@@ -11,9 +11,9 @@
 
 %Default parameters when using gurobi as the sub-problem solver
 
-gurobi_params.presolve = 0;
-gurobi_params.FeasibilityTol=1e-4;
-gurobi_params.BarConvTol=1e-4;
+%gurobi_params.presolve = 0;
+%gurobi_params.FeasibilityTol=1e-4;
+%gurobi_params.BarConvTol=1e-4;
 gurobi_params.outputflag = 0;
 gurobi_params.threads = 1;
-gurobi_params.TimeLimit = 100;
+gurobi_params.TimeLimit = 5;

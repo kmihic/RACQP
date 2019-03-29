@@ -20,7 +20,7 @@ function rac_out = RACQP(model, run_p)
 %
 %   rac_out = RACQP(model, run_parameters) solves QP model using runtime parameters
 %
-
+  time_start = tic;
   disp("This version of RACQP implements")
   disp("   min  x'H'x + c'x")
   disp("   s.t. Aeq x = beq")
@@ -40,19 +40,20 @@ function rac_out = RACQP(model, run_p)
   end
   
   %remove embedded slacks to avoid problem with cholesky
-  if(~use_mip && strcmpi('cholesky',run_p.sub_solver_type))
+  if(~use_mip && strcmpi('cholesky',run_p.sub_solver_type) && run_p.n_blocks >1)
     model = remove_embedded_slacks(model);
   end
   %call the solver
   if(use_mip)
     run_p.run_sub.mip=use_mip;
-    rac_out = rac_mip(model, run_p);
+    run_p.run_sub.epsilon = run_p.mip_epsilon;
+    rac_out = rac_mip(model, run_p,time_start);
   elseif(run_p.n_blocks == 1)
     run_p.mip=false;
-    rac_out = rac_single_block(model, run_p);
+    rac_out = rac_single_block(model, run_p, time_start);
   else
     run_p.mip=false;
-    rac_out = rac_multi_block(model, run_p);
+    rac_out = rac_multi_block(model, run_p, time_start);
   end
   
   %adjust the objective value, if objective scaled

@@ -21,7 +21,6 @@
 % no_split = true -> a group must not be split between blocks 
 function out = make_blocks(n_vars,groups, block_sizes, no_split)
 
-
   n_group = size(groups,1);
 
   b_ix = 1;

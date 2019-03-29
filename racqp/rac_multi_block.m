@@ -9,13 +9,11 @@
 %
 %
 
-function rac_out = rac_multi_block(model, run_p, tau)
+function rac_out = rac_multi_block(model, run_p, time_start)
 % RAC_MULTI_BLOCK Solves QP using RAC multi-block approach
-
   %start the clock
-  stime_start = tic;   
-  time_start = tic;
-
+  stime_start = time_start;   
+  
   %check if using user defined sub-problem solver
   if(strcmpi('user_defined',run_p.sub_solver_type))
     user_sp = true;
@@ -40,16 +38,30 @@ function rac_out = rac_multi_block(model, run_p, tau)
   end
 
   %Define auxiliary vectors and matrice  
-  Q = [model.Q, sparse(n_var_x,m2); sparse(m2,n_var_x+m2)];
-  c = [model.c; sparse(m2,1)];
-  c_x = model.c(1:n_var_x);
+   mQ = model.Q;
+   mc = model.c;
+   Q = [model.Q, sparse(n_var_x,m2); sparse(m2,n_var_x+m2)];
+   c = [model.c; sparse(m2,1)];
+   c_x = model.c(1:n_var_x);
+   A = [model.Aeq, sparse(m1,m2); model.Aineq, speye(m2,m2)];     
+   b = [model.beq;model.bineq];
+   s0 = max(model.bineq-model.Aineq*model.x0,0);
+   x_current = [model.x0;s0];
+   y_current = zeros(m,1);
+   Ares = [model.Aeq;model.Aineq];
+   zero_m2=sparse(m2,1);
+   if(~run_p.use_sparse)
+    mQ = sparse(mQ);
+    mc = sparse(mc);
+    Q = full(Q);
+    A = full(A);
+    c = full(c);
+    c_x = full(c_x);
+    s0 = full(s0);
+    Ares = full(Ares);
+    zero_m2 = zeros(m2,1);
+   end
 
-  A = [model.Aeq, sparse(m1,m2); model.Aineq, speye(m2,m2)];
-  b = [model.beq;model.bineq];
-  s0 = max(model.bineq-model.Aineq*model.x0,0);
-  x_current = [model.x0;s0];
-  y_current = zeros(m,1);
-  Ares = [model.Aeq;model.Aineq];
 
   % use split technique for bounds if defined and not handled by partial Lagrange
   n_inf = sum(isinf(model.lb)) + sum(isinf(model.ub));
@@ -57,7 +69,7 @@ function rac_out = rac_multi_block(model, run_p, tau)
     do_xk = 0;
   else
     do_xk = 1;
-    z_current = sparse(n_var_x,1);  
+    z_current = zeros(n_var_x,1);  
     xk = model.x0;
   end
 
@@ -66,8 +78,14 @@ function rac_out = rac_multi_block(model, run_p, tau)
   o_blocks = n_var_x-block_size*run_p.n_blocks;
   RP_all = cell(0);
   RP = cell(0);
-  % optimize if using RP mode, thus no overlap groups, num blocks =num groups
-  if((isfield(model,'group_mode') && strcmpi('RP',model.group_mode)))
+  if(isfield(model,'group_mode')&& strcmpi('RAC_NO_SPLIT',model.group_mode))
+    no_split = true;
+  else
+    no_split = false;
+  end
+  % optimize if using RP mode, thus no overlap groups, num blocks =num groups  
+  use_cyclic_admm = false;
+  if((isfield(model,'group_mode') && (strcmpi('RP',model.group_mode) || strcmpi('CADMM',model.group_mode))))
     b_size = [];
     if(strcmpi('cholesky',run_p.sub_solver_type))      
       RP_all = prepare_RP_matrices(Q,A,model.groups,beta,true, run_p.use_sparse, do_xk);
@@ -76,18 +94,26 @@ function rac_out = rac_multi_block(model, run_p, tau)
     end
     use_rp = true;
     n_blocks = size(RP_all,1);
+    if(strcmpi('CADMM',model.group_mode))
+      use_cyclic_admm = true;
+      cadmm_order = randperm(n_blocks);
+    end
   else
     n_blocks = run_p.n_blocks;
     b_size = ones(n_blocks,1) * block_size;
     b_size(1:o_blocks) = b_size(1:o_blocks)+1; 
     use_rp = false;
   end
+    
   %initialize counters and vars
   curr_iter = 0;
   sub_model_time = 0;
   sub_solver_time = 0;
   res_iter=[];
+  obj_iter = [];
+  time_iter = [];
   curr_res = Inf;
+  cnt = 0;
   
   %prepare data arrays
   if(size(A,1) == 0)
@@ -104,15 +130,20 @@ function rac_out = rac_multi_block(model, run_p, tau)
   while(~terminate(run_p, curr_iter, curr_res, time_start))
     c_res = c_stat - A'*y_current;
     if(do_xk == 1)
-      c_res = c_res  - [z_current;sparse(m2,1)];
+      c_res = c_res  - [z_current;zero_m2];
     end
 
-    if(use_rp)
+    
+    if(use_cyclic_admm)      
+      grp_order = cadmm_order;
+    elseif(use_rp)
       grp_order = randperm(n_blocks);
     else
-      mblocks = get_blocks(model,b_size);
+      mblocks = get_blocks(model,b_size, no_split);      
       x_blocks = mblocks.blocks;
       grp_order = [];
+      %if using no split, num_blocks can change
+      n_blocks = length(x_blocks);
     end
     %update primal vars
     for block_ix = 1:n_blocks
@@ -125,8 +156,8 @@ function rac_out = rac_multi_block(model, run_p, tau)
       %prepare sub-model
       stime_start = tic;
       if(user_sp)
-        Q_current = model.Q(x_ix,x_ix);
-        c_current = model.c(x_ix) + 2*(Qx(x_ix)-Q_current*x_current(x_ix));
+        Q_current = mQ(x_ix,x_ix);
+        c_current = mc(x_ix) + 2*(Qx(x_ix)-Q_current*x_current(x_ix));
       else
         A_sub = A(:,x_ix); 
         if(use_rp)          
@@ -150,6 +181,8 @@ function rac_out = rac_multi_block(model, run_p, tau)
       stime_start = tic;
       x_sub = solve_subproblem(Q_current, c_current, x_ix, model, run_p,x_current,...
                y_current,beta_h,RP);
+
+
       sub_solver_time = toc(stime_start) + sub_solver_time;
 
       %update Qx, Ax  
@@ -194,15 +227,24 @@ function rac_out = rac_multi_block(model, run_p, tau)
     %finalize the iteration    
     if(mip)
       x = x_current(1:n_var_x);
-      obj_val = x'*model.Q*x+model.c'*x+model.const;
-      if(curr_res < tol_best)
+      obj_val = x'*mQ*x+mc'*x+model.const;
+      if( curr_res < tol_best)
         tol_best = curr_res;
         obj_best = obj_val;
         x_best = x_current(1:n_var_x);
+        cnt=0;
       elseif(curr_res == tol_best && obj_val < obj_best)
         obj_best = obj_val;
-        x_best = x_current(1:n_var_x);        
+        x_best = x_current(1:n_var_x);    
+        cnt = 0;
+      else
+        cnt = cnt+1;
       end
+      %time to perturb
+      if(cnt == run_p.n_perturb_trial)
+        break;
+      end  
+
     end
     
 
@@ -210,13 +252,21 @@ function rac_out = rac_multi_block(model, run_p, tau)
     if(isfield(run_p,'debug') && run_p.debug > 0)
       x = x_current(1:n_var_x);
       if(~mip)
-        obj_val = x'*model.Q*x+model.c'*x+model.const;
+        obj_val = x'*mQ*x+mc'*x+model.const;
       end
-      s=sprintf("multi_block (%d): %e %e(residual prim, residual dual, obj val)",...
+      if(mip)
+         s=sprintf("multi_block (%d): %e %e %e (residual prim, obj val, best obj val)",...
+            curr_iter, curr_res, obj_val, obj_best);
+
+      else
+        s=sprintf("multi_block (%d): %.15e %e(residual prim,  obj val)",...
             curr_iter, curr_res, obj_val);
-      disp(s)      
+      end
+      disp(s)   
       %store for output  
       res_iter(curr_iter) = curr_res;
+      obj_iter(curr_iter) = obj_val;
+      time_iter(curr_iter) = toc(time_start);
     end
 
 
@@ -241,7 +291,7 @@ function rac_out = rac_multi_block(model, run_p, tau)
     rac_out.sol_dual = [];
   else
     x = x_current(1:n_var_x);
-    obj_val = x'*model.Q*x+model.c'*x+model.const;
+    obj_val = x'*mQ*x+mc'*x+model.const;
     rac_out.sol_x = x;
     rac_out.sol_obj_val = obj_val;  
     rac_out.sol_residue_p = curr_res;
@@ -257,13 +307,15 @@ function rac_out = rac_multi_block(model, run_p, tau)
   rac_out.model_time = sub_model_time;
   if(isfield(run_p,'debug') && run_p.debug > 0)
     rac_out.res_iter = res_iter;
+    rac_out.obj_iter = obj_iter;
+    rac_out.time_iter = time_iter;
   end
 end %function solve
 
-function mblocks = get_blocks(model,b_size)
+function mblocks = get_blocks(model,b_size,no_split)
 
   if(isfield(model,'groups') && size(model.groups,1) > 0)
-    mblocks = make_blocks(model.size, model.groups, b_size);    
+    mblocks = make_blocks(model.size, model.groups, b_size, no_split);    
   else
     if(length(b_size) == 0)
       error('Error. Blocks not defined')
@@ -326,10 +378,13 @@ end
 function x = solve_subproblem_gurobi(Q_current, c_current, x_ix, rac_model, run_p, x_curr)
   %disp('gurobi');
   n_vars = length(x_ix);
-  model.Q = Q_current;
+  if(~issparse(Q_current))
+    model.Q = sparse(Q_current);
+  else
+    model.Q = Q_current;
+  end
   model.obj = full(c_current);
-  %add local bounds, if defined    
-
+  %add local bounds, if defined 
   lc = rac_model.local_constraints;
   
   if(length(lc.lb) > 0)
@@ -366,6 +421,7 @@ function x = solve_subproblem_gurobi(Q_current, c_current, x_ix, rac_model, run_
   end
   %add to model
   [row,col] = find(A);
+  row = unique(row);
   if(length(row) > 0)
     model.A = A(row,:);
     model.rhs = rhs(row);
@@ -381,7 +437,8 @@ function x = solve_subproblem_gurobi(Q_current, c_current, x_ix, rac_model, run_
      model.vtype = rac_model.vtype(x_ix);
   end
 
-
+   
+%run_p.gurobi_params.outputflag=1;
 
   if(~isfield(run_p.gurobi_params,'TimeLimit'))
     error('Error. Time limit for gurobi sub-solver must be set')
@@ -393,7 +450,7 @@ function x = solve_subproblem_gurobi(Q_current, c_current, x_ix, rac_model, run_
   end
 
   if(isfield(g_out,'x'))
-    x = g_out.x;
+    x = round(g_out.x);
   elseif(strcmpi(g_out.status, 'TIME_LIMIT') && size(model.A,1) == 0)
     error('Time limit too short')
   else
@@ -401,6 +458,11 @@ function x = solve_subproblem_gurobi(Q_current, c_current, x_ix, rac_model, run_
     error('No solution returned by gurobi')
   end
 end
+
+
+
+
+
 
 
 

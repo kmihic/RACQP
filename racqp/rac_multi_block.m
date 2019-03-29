@@ -450,7 +450,7 @@ function x = solve_subproblem_gurobi(Q_current, c_current, x_ix, rac_model, run_
   end
 
   if(isfield(g_out,'x'))
-    x = round(g_out.x);
+    x = g_out.x;
   elseif(strcmpi(g_out.status, 'TIME_LIMIT') && size(model.A,1) == 0)
     error('Time limit too short')
   else

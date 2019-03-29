@@ -1,0 +1,26 @@
+%
+% RACQP -  Randomly Assembled Cyclic ADMM Quadratic Programming Solver
+% Copyright (C) 2019 
+%     Kresimir Mihic <kmihic@alumni.stanford.edu>
+%     Mingxi Zhu <mingxiz@stanford.edu>
+%     Yinyu Ye <yyye@stanford.edu>
+%
+% This file is part of RACQP 
+%
+%
+
+
+Instances in this folder are taken or constructed from:
+
+The Mittelmann LP test set:
+   http://plato.asu.edu/ftp/lptestset/
+The Maros and Meszaros Convex QP Test Problem Set:
+   Mat files from: https://github.com/oxfordcontrol/osqp
+   Original files: http://www.cuter.rl.ac.uk/Problems/marmes.html
+QAPLIB:
+   http://anjos.mgi.polymtl.ca/qaplib/
+Gset:
+   http://web.stanford.edu/ yyye/yyye/Gset/
+Markowitz model. Estimates based on data from Wharton Research Data Services:
+   https://wrds-web.wharton.upenn.edu/wrds/index.cfm
+

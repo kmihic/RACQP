@@ -30,8 +30,8 @@ end
 kappa = 1e-5;
 p_cut = 0.5;
 if(low_rank)
-  n_blocks = 10;
-  beta = 1;
+  n_blocks = 50;
+  beta = 0.5;
 else
   n_blocks = 100;
   beta = 0.05;
@@ -57,14 +57,14 @@ run_params.n_blocks = n_blocks;
 run_params.beta = beta;
 run_params.rnd_seed = 123;
 %turn off verbose
-run_params.debug = 0;
+run_params.debug = 1;
 %Check density - no point, time is driven by Gurobi which uses sparse Q and A
 
 
 %load default gurobi parameters
 default_gurobi_parameters
 %change how long gurobi will spend on each subproblem
-gurobi_params.TimeLimit = 15;
+gurobi_params.TimeLimit = 2;
  
 %gurobi_params.presolve=1;
 %gurobi_params.outputflag=0;

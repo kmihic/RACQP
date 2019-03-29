@@ -10,16 +10,17 @@
 %
 
 
-function run_min_variance_test()
+function run_LPTestSet_test()
+%addpath('/opt/gurobi/gurobi752/linux64/matlab/');
 addpath('../racqp');
 addpath('../utils');
-
 
   inst = get_instances();
   solutions = [];
   for ii = 1:length(inst)
     disp('Solving: '+inst(ii,1));
-    s = verify_Markowitz_portfolio_selection_data(inst(ii,1),inst(ii,2),str2num(inst(ii,3)));
+
+    s = verify_LPTestSet(inst(ii,1),str2num(inst(ii,2)),str2num(inst(ii,3)),inst(ii,4));
     solutions = [solutions,s];
   end
   disp(" ")
@@ -32,18 +33,16 @@ addpath('../utils');
     out = name + " " + obj_val + " " + run_time;
     disp(out)
   end
+  
+  
+%quit
 end
-
 
 function inst = get_instances()
-%regular files are to large for gitHub
-%inst=["../data/data_markowitz/regular_daily.mat","false","60";  
-%"../data/data_markowitz/regular_monthly.mat","false","60";
-%"../data/data_markowitz/regular_quarterly.mat","false","60";
-%"../data/data_markowitz/lowrank_daily.mat","true","30";  
-%"../data/data_markowitz/lowrank_monthly.mat","true","30";  
-%"../data/data_markowitz/lowrank_quarterly.mat","true","30"];
-inst=["../data/data_markowitz/lowrank_daily.mat","true","60";  
-"../data/data_markowitz/lowrank_monthly.mat","true","60";  
-"../data/data_markowitz/lowrank_quarterly.mat","true","60"];
+inst=["../data/data_mps/wide15.mps", "10", "200", "none";
+"../data/data_mps/square15.mps", "10", "200", "none";
+"../data/data_mps/long15.mps", "10", "200", "none";
+"../data/data_mps/nug30.mps", "200", "200", "l_bounds"];
 end
+
+

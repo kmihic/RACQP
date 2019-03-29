@@ -22,10 +22,10 @@ disp("LOADING THE MODEL...")
 model = load_MPS(filename,true);
 if(strcmpi("l_bounds",pL))
   solver = 'gurobi';
-  model.local_constraints.lb=model.lb;
-  model.local_constraints.ub=model.ub;
-  model.lb = -inf*model.lb;
-  model.ub = inf*model.ub;
+  model.local_constraints.lb= zeros(model.size,1)
+  model.local_constraints.ub=[];
+  model.lb = zeros(model.size,1);
+  model.ub = inf*ones(model.size,1);
   model.local_constraints.Aineq = sparse(0,model.size);
   model.local_constraints.bineq = [];
   model.local_constraints.Aeq = sparse(0,model.size);
@@ -44,7 +44,7 @@ run_params.beta = beta;
 run_params.epsilon = 1e-4;
 run_params.max_iter = 4000;
 run_params.max_rtime = 1800;
-run_p.sub_solver_type = solver;
+run_params.sub_solver_type = solver;
 
 default_gurobi_parameters
 %change how long gurobi will spend on each subproblem

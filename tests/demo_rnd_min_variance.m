@@ -79,6 +79,7 @@ if(n_blocks == 1)
   msg = "Solver mode ignored. Running RACQP single-block";
 else
   msg = "Running RACQP multi-block:" + msg +" mode.";
+end
 
 %run the solver
 fprintf("\n##############\n\n%s\n\n",msg)

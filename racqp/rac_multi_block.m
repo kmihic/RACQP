@@ -254,15 +254,17 @@ function rac_out = rac_multi_block(model, run_p, time_start)
       if(~mip)
         obj_val = x'*mQ*x+mc'*x+model.const;
       end
-      if(mip)
-         s=sprintf("multi_block (%d): %e %e %e (residual prim, obj val, best obj val)",...
+      if(run_p.debug > 1)
+        if(mip)
+           s=sprintf("multi_block (%d): %e %e %e (residual prim, obj val, best obj val)",...
             curr_iter, curr_res, obj_val, obj_best);
 
-      else
-        s=sprintf("multi_block (%d): %.15e %e(residual prim,  obj val)",...
+        else
+          s=sprintf("multi_block (%d): %.15e %e(residual prim,  obj val)",...
             curr_iter, curr_res, obj_val);
-      end
-      disp(s)   
+        end
+        disp(s)  
+      end 
       %store for output  
       res_iter(curr_iter) = curr_res;
       obj_iter(curr_iter) = obj_val;

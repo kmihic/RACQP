@@ -223,10 +223,12 @@ function rac_out = rac_single_block(model, run_p, time_start)
 
     if(isfield(run_p,'debug') && run_p.debug > 0)
       x = x_current(1:n_var_x);
-      obj_val = x'*mQ*x+mc'*x+model.const;   
-      s=sprintf("single_block (%d): %e %e (residual prim, residual obj val)",...
+      obj_val = x'*mQ*x+mc'*x+model.const;  
+      if(run_p.debug > 1)
+        s=sprintf("single_block (%d): %e %e (residual prim, residual obj val)",...
             curr_iter, curr_res,obj_val);
-      disp(s)
+        disp(s)
+      end
       %store for output  
       res_iter(curr_iter) = curr_res;
     end

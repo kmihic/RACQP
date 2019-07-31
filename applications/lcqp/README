@@ -1,0 +1,35 @@
+This directory includes scripts that run test to verify results presented in Mihic, K., Zhu, M. and Ye, Y., 2019. Managing Randomization in the Multi-Block Alternating Direction Method of Multipliers for Quadratic Optimization. arXiv preprint arXiv:1903.01786.
+
+
+There are two scripts per experiment, run_* that load/convert data instances and collect results, and verify_* scripts that setup runtime parameters for each type of the experiment.
+
+Each run_can be called independently, but all the tests are conveniently setup to be ran using ./tests/verify_results.m script. The script provides an easy interface to run experiments by linking run/verify scripts to corresponding sections of the paper:
+
+The format is: verify_results(section,solver, max_run_time). The following options are supported:
+
+verify_results('4.1.1', solver )
+verify_results('4.1.2', solver )
+verify_results('4.1.2_markow', solver )
+verify_results('4.1.2_lcqp', solver )
+verify_results('4.1.3', solver )
+verify_results('4.1.4', solver )
+verify_results('4.1.5', solver )
+verify_results('4.2.2', solver )
+verify_results('4.2.2_regular', solver, max_run_time_M )
+verify_results('4.2.2_lowrank', solver )
+verify_results('4.2.3', solver )
+verify_results('4.2.4', solver, max_run_time_G )
+verify_results('4.2.5', solver )
+
+where 
+solver = 'racqp' or 'gurobi' or 'mosek' for 4.1* sections and
+solver = 'racqp' or 'gurobi'  for 4.2* sections (binary problems)
+
+and
+max_run_time_M = 60 or 300 or 600 or 1800
+max_run_time_G = 600 or 1800 or 3600
+ 
+Note:
+The tests use hardcoded paths to Mosek and Gurobi matlab interfaces:
+%addpath('/opt/gurobi/gurobi752/linux64/matlab/');
+%addpath('/opt/mosek/8/toolbox/r2014a');

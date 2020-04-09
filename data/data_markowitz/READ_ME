@@ -1,0 +1,6 @@
+Instances describing full-rank Markowitz model, regular_*, have been split into multiple files.
+To re-construct the original mat files, form a command line:
+
+cat regular_daily.mat_part* >regular_daily.mat
+cat regular_monthly.mat_part* >regular_monthly.mat
+cat regular_quarterly.mat_part* >regular_quarterly.mat

@@ -9,7 +9,8 @@
 %
 %
 
-Matlab data files of instances in RAC format. The instances are taken or constructed from:
+Matlab data files of instances in raw and RAC format. 
+The instances taken or constructed from:
 
 The Mittelmann LP test set:
    http://plato.asu.edu/ftp/lptestset/

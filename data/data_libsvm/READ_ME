@@ -1,0 +1,6 @@
+Instances describing large models have been split into multiple files.
+To re-construct the original mat files, form a command line:
+
+cat news20_binary.mat_part* > news20_binary.mat
+cat rcv1_binary.mat_part* > rcv1_binary.mat
+

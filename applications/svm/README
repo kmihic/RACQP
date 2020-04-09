@@ -1,8 +1,0 @@
-
-This directory includes scripts that run test to verify SVM results presented in Zhu, M., Mihic, K. and Ye, Y., 2019. On a Randomized Multi-Block ADMM for Solving Selected Machine Learning Problems. arXiv preprint arXiv:1907.01995.
-
-The code depends on RACQP solver and LIBSVM. Please update addpath(.) lines to reflect the place where the code resides in your filesystem.
-
-An example on how to use the code is shown in runSVM bash script.
-
-Note: the implementation assumes linux OS is used. If macOS or windows is used, please update get_free_memory.m to use the proper call for free memory information.

@@ -1,0 +1,2 @@
+./run_experiments_svm: line 11: 12611 Killed                  matlab -nodisplay -nosplash -nodesktop -r "run_svm_test('libsvm')" > $log_file
+./run_experiments_svm: line 15:  5727 Killed                  matlab -nodisplay -nosplash -nodesktop -r "run_svm_test('matlab')" > $log_file

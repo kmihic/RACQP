@@ -1,0 +1,16 @@
+#! /bin/bash
+
+DIR=$1
+
+#RACQP
+log_file=`echo ${DIR}/racqp_svm.log`
+matlab -nodisplay -nosplash -nodesktop -r "run_svm_test('racqp')" >$log_file
+
+#LIBSVM
+log_file=`echo ${DIR}/libsvm_svm.log`
+matlab -nodisplay -nosplash -nodesktop -r "run_svm_test('libsvm')" >$log_file
+
+#MATLAB
+log_file=`echo ${DIR}/matlab_svm.log`
+matlab -nodisplay -nosplash -nodesktop -r "run_svm_test('matlab')" >$log_file
+

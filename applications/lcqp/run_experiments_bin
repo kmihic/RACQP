@@ -1,0 +1,40 @@
+#! /bin/bash
+
+SOLVER=$1
+DIR=$2
+
+for RTIME in 60 300 600
+do
+  log_file=`echo ${DIR}/${SOLVER}_4.2.2_regular_RT_${RTIME}.log`
+  matlab -nodisplay -nosplash -nodesktop -r "run_binary_exp('4.2.2_regular', '${SOLVER}', ${RTIME})" >$log_file
+done
+
+for RTIME in 60
+do
+  log_file=`echo ${DIR}/${SOLVER}_4.2.2_lowrank_RT_${RTIME}.log`
+  matlab -nodisplay -nosplash -nodesktop -r "run_binary_exp('4.2.2_lowrank', '${SOLVER}', ${RTIME})" >$log_file
+done
+
+#for RTIME in 600
+#do
+#  log_file=`echo ${DIR}/${SOLVER}_4.2.3_full_RT_${RTIME}.log`
+#  matlab -nodisplay -nosplash -nodesktop -r "run_binary_exp('4.2.3_full', '${SOLVER}', ${RTIME})" >$log_file
+#done
+
+for RTIME in 300 600
+do
+  log_file=`echo ${DIR}/${SOLVER}_4.2.3_large_RT_${RTIME}.log`
+  matlab -nodisplay -nosplash -nodesktop -r "run_binary_exp('4.2.3_large', '${SOLVER}', ${RTIME})" >$log_file
+done
+
+for RTIME in 300 600 1800 3600
+do
+  log_file=`echo ${DIR}/${SOLVER}_4.2.4_RT_${RTIME}.log`
+  matlab -nodisplay -nosplash -nodesktop -r "run_binary_exp('4.2.4', '${SOLVER}', ${RTIME})" >$log_file
+done
+
+for RTIME in 300 600 1800 3600
+do
+  log_file=`echo ${DIR}/${SOLVER}_4.2.5_RT_${RTIME}.log`
+  matlab -nodisplay -nosplash -nodesktop -r "run_binary_exp('4.2.5', '${SOLVER}', ${RTIME})" >$log_file
+done

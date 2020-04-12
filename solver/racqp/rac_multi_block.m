@@ -503,7 +503,9 @@ function rac_out = rac_multi_block(model, run_p, time_start)
       %store for output  
       x_iter(curr_iter,:) = x_current;
       y_iter(curr_iter,:) = y_current;
-      z_iter(curr_iter,:) = z_current;
+      if(do_xk)
+        z_iter(curr_iter,:) = z_current;
+      end
       res_iter(curr_iter) = curr_res.prim;
       res_iter_dual(curr_iter) = curr_res.dual;
       time_iter(curr_iter) = toc(time_start);

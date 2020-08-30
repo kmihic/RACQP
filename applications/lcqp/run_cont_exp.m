@@ -47,7 +47,7 @@ function run_cont_exp(section,solver, r_time, epsilon, max_iter, rnd_seed)
     disp("Accepted: 'racqp', 'gurobi', 'osqp' and 'mosek'");
   end
 
-  quit
+%  quit
 end
 
 function solve(section, solver, r_time, epsilon, max_iter, rnd_seed);

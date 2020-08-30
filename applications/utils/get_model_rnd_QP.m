@@ -17,11 +17,14 @@ function model=get_rnd_QP(p_setup, add_bounds, Q_setup)
 
   %get Q
   %in a controlled way: n_var,cond_num,eta,zeta,sparsity_Q,rank
-  if(nargin > 2 )
+  if(p_setup.Q_sparsity < 0)
+    Q = sparse(p_setup.n_var,p_setup.n_var);
+  elseif(nargin > 2 )
     Q = makeQ(p_setup, Q_setup);
   else
     Q = makeQ(p_setup);
   end
+  Q = Q + p_setup.kappa * speye(p_setup.n_var,p_setup.n_var);
   %get c
   c = get_c(p_setup.n_var,p_setup.c_sparsity);
   

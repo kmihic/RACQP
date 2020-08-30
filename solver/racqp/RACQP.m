@@ -48,7 +48,11 @@ function rac_out = RACQP(model, run_p, quiet)
           || strcmpi('CADMM',model.group_mode) ...
           || strcmpi('DADMM',model.group_mode)) ...
       && ~isfield(model,'groups'))
-    model.groups = construct_rnd_groups(model.size,run_p.n_blocks);
+    if(use_mip)
+      model.groups = construct_rnd_groups(model.size,run_p.run_sub.n_blocks);
+    else
+      model.groups = construct_rnd_groups(model.size,run_p.n_blocks);
+    end
   end
   %call the solver
   if(use_mip)

@@ -492,7 +492,7 @@ function rac_out = rac_multi_block(model, run_p, time_start)
       if(mip)
          s=sprintf("multi_block (%d): %e %e %e (residual prim, obj val, best obj val)",...
             curr_iter, curr_res.prim, obj_val, obj_best);
-         obj_iter(curr_iter) = obj_val;
+         obj_iter(curr_iter) = obj_best;%obj_val;
 
       else
         s=sprintf("multi_block (%d): %e %.3e (res prim, dual) %3f [s]",...
@@ -738,10 +738,7 @@ function [x z] = solve_subproblem_gurobi(Q_current, c_current, x_ix, ...
   if(isfield(rac_model,'vtype'))
      model.vtype = rac_model.vtype(x_ix);
   end
-
    
-%run_p.gurobi_params.outputflag=1;
-
   if(~isfield(run_p.gurobi_params,'TimeLimit'))
     error('Error. Time limit for gurobi sub-solver must be set')
   end

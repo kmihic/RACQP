@@ -10,7 +10,7 @@
 %
 
 
-function run_admm_compare_test(r_time,  rnd_seed)
+function run_admm_compare_test(r_time,  rnd_seed, print_graph)
 
 solver = 'racqp';
  
@@ -22,7 +22,6 @@ solver = 'racqp';
   disp("Solving: "+filename)
   disp("LOADING THE MODEL...")
   load(dir+filename);
-%  load('MARKOWITZ_N3000_SP0_95_E0_5_Z2_C100_RND1')
   epsilon = 1e-20;
   iterations = [10 50 100];
   admm_v = get_admm_type();
@@ -55,7 +54,7 @@ solver = 'racqp';
       inst_param = get_instance_run_params(model, 'racqp', r_time, false, ...
                         epsilon, n_iter);
       inst_param.racqp_run_p = get_markowitz_run_params(n_grp, beta, ...
-                   r_time, epsilon, n_iter, rnd_seed, model.Q);
+                   r_time, epsilon, n_iter, rnd_seed, model.Q,print_graph);
       if(strcmpi(admm_v(kk,1),'DADMM'))
         inst_param.racqp_run_p.sub_solver_type = 'gurobi';
       end
@@ -68,20 +67,20 @@ solver = 'racqp';
   disp("####################")
   disp(" SUMMARY ")
   print_solutions(solutions, false, false, 'ADMM_variant_Niter');
-%   if(inst_param.racqp_run_p.verbose)
-%     plot_admm_variants_evol(solutions);
-%   end
+  if(print_graph)
+     plot_admm_variants_evol(solutions);
+  end
 
 end
 
 function run_params = get_markowitz_run_params(n_blocks, beta, max_time, epsilon,...
-                                   max_iter, rnd_seed,Q )
+                                   max_iter, rnd_seed,Q, debug )
 
   run_params = default_run_params(n_blocks, beta,max_time,epsilon,max_iter);
   %change some parameters
   run_params.rnd_seed = rnd_seed;
   %turn on verbose
-%  run_params.debug = 1;
+  run_params.debug = debug;
   %get density
   density = nnz(Q)/size(Q,1)^2;
   if(density > 0.5)
